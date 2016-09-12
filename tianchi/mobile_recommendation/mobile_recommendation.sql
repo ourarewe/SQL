@@ -46,6 +46,7 @@ select * from tianchi_fresh_comp_train_user
 where item_id in (select item_id from tianchi_fresh_comp_train_item);
 '''
 
+#--两种求交集方式-----------------------------------------------------
 # 4 min 14.03 sec    15 min 10.76 sec
 drop table if exists tianchi_fresh_comp_train_P;
 create table tianchi_fresh_comp_train_P as
@@ -60,23 +61,24 @@ select a.user_id,a.item_id,a.behavior_type,a.time
 from tianchi_fresh_comp_train_user a join tianchi_fresh_comp_train_item b 
 on a.item_id=b.item_id;
 
-
 alter table tianchi_fresh_comp_train_P add index idx_u_i_t (user_id,item_id,time);
 alter table tianchi_fresh_comp_train_P add index idx_time (time);
 
+#-----------------------------------------------------------------------------------
 
+#--尝试减少时间字符长度，但没卵用-----------------------------------------
 drop table if exists temp;
 create table temp as 
 select user_id,item_id,behavior_type
 ,concat(substring(time,6,2),substring(time,9,2),substring(time,12,2)) as time_int
 from tianchi_fresh_comp_train_P;
-
 alter table temp modify column time_int int;
-
 alter table temp add index idx_u_i_t (user_id,item_id,time_int);
 
+#---------------------------------------------------------------------------------
 
 
+#--原打算一次性建好横表----------------------------------------------------
 drop table if exists tianchi_fresh_comp_train_P_R;
 create table tianchi_fresh_comp_train_P_R as
 select user_id,item_id,time_int
@@ -85,3 +87,28 @@ select user_id,item_id,time_int
 ,sum(if(behavior_type=3,1,0)) addCart
 ,sum(if(behavior_type=4,1,0)) buy
 from temp group by user_id,item_id,time_int;
+
+#--尝试改为分天建表再合并------------------------------------------------------
+drop table if exists tianchi_fresh_comp_train_P_R;
+create table tianchi_fresh_comp_train_P_R
+(user_id bigint
+,item_id bigint
+,time_int varchar(50)
+,browse int
+,collect int
+,addCart int
+,buy int
+)ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+#--这样插入也好慢---------------------------------------------------------------
+insert into tianchi_fresh_comp_train_P_R
+select * from (
+select user_id,item_id,time
+,sum(if(behavior_type=1,1,0)) browse
+,sum(if(behavior_type=2,1,0)) collect
+,sum(if(behavior_type=3,1,0)) addCart
+,sum(if(behavior_type=4,1,0)) buy
+from tianchi_fresh_comp_train_P
+where time like '2014-11-18 %' 
+group by user_id,item_id)t;
+
