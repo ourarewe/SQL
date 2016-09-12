@@ -39,7 +39,7 @@ alter table tianchi_fresh_comp_train_item add index idx_item (item_id);
 
 
 '''
-#in Óï¾äÌ«Âı£¬Ë÷ÒıÎŞÓÃ
+#in è¯­å¥å¤ªæ…¢ï¼Œç´¢å¼•æ— ç”¨
 drop table if exists tianchi_fresh_comp_train_P;
 create table tianchi_fresh_comp_train_P as
 select * from tianchi_fresh_comp_train_user
