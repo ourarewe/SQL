@@ -24,6 +24,7 @@ CREATE TABLE rrd_grade_host (host_id int(11)
                  );
 LOAD DATA LOCAL INFILE 'D:\\Documents\\sendi\\rrd_grade_host.csv' INTO TABLE rrd_grade_host
 FIELDS TERMINATED BY ','
+ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
 
@@ -40,6 +41,7 @@ CREATE TABLE rrd (id int(11)
 
 LOAD DATA LOCAL INFILE '/home/ourarewe/share/rrd.csv' INTO TABLE rrd
 FIELDS TERMINATED BY ','
+ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
 
@@ -70,6 +72,7 @@ union all
 select * from rrd_grade
 INTO OUTFILE 'rrd_grade.csv'
 FIELDS TERMINATED BY ',' 
+ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
 
@@ -79,6 +82,7 @@ union all
 select * from rrd_period
 INTO OUTFILE 'rrd_period.csv'
 FIELDS TERMINATED BY ',' 
+ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
 
