@@ -1,8 +1,11 @@
 
-
+#--user_terminal-------------------------------------------------------------
 drop table if exists user_terminal;
 create table user_terminal
-(os varchar(50) default NULL
+(mac_address varchar(50) default NULL
+,imsi varchar(50) default NULL
+,imei varchar(50) default NULL
+,os varchar(50) default NULL
 ,os_version varchar(50) default NULL
 ,term_manufator varchar(50) default NULL
 ,term_model varchar(50) default NULL
@@ -11,13 +14,15 @@ create table user_terminal
 ,mobile_operator varchar(50) default NULL
 ,mobile_standard varchar(50) default NULL
 ,mobile_network varchar(50) default NULL
+,mobile_generation int default 0
+,current_apn varchar(1) default NULL
+,current_using_wifi varchar(1) default NULL
 ,visit_ip_address varchar(50) default NULL
-,msg_first_time varchar(50) default NULL
-,msg_last_time varchar(50) default NULL
+,msg_first_time Datetime default NULL
+,msg_last_time Datetime default NULL
 ,msg_count int default 0
 )ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-LOAD DATA LOCAL INFILE 'C:\\Users\\Administrator\\Desktop\\user_terminal.csv'
+LOAD DATA LOCAL INFILE 'D:\\Documents\\SQL\\aclog\\user_terminal.csv'
 INTO TABLE user_terminal
 FIELDS TERMINATED BY ','
 ESCAPED BY ''
@@ -25,29 +30,50 @@ LINES TERMINATED BY '\r\n'
 IGNORE 1 LINES;
 
 alter table user_terminal add index idx_ip (visit_ip_address);
+alter table user_terminal add index idx_mac (mac_address);
 
 
-drop table if exists ticket_20160908;
-create table ticket_20160908
-(user varchar(50)
-,services varchar(50)
-,ip varchar(50)
+#--ticket å¯æ›´æ¢ä¸åŒæ—¥æœŸçš„ticketè¡¨-----------------------------------------------------------------
+drop table if exists ticket;
+create table ticket
+(user varchar(50) default null
+,biling_id varchar(50) default null
+,services varchar(50) default null
+,port bigint default 0
+,VLAN int default 0
+,calling_ip varchar(50) default null  #----------------ip----------------
+,calling_mac varchar(50) default null #----------------mac åœ°å€---------------
+,time_start Datetime default null
+,time_end Datetime default null
+,duration bigint default 0 
+,in_M float default 0.0
+,out_M float default 0.0
+,in_bag bigint default 0
+,out_bag bigint default 0
+,free_in_M int default 0
+,free_out_M int default 0
+,charge_out_M int default 0
+,charge_in_M int default 0
+,cost int default 0
+,NASID varchar(50) default null
 );
-LOAD DATA LOCAL INFILE 'C:\\Users\\Administrator\\Desktop\\ticket_20160908.csv'
-INTO TABLE ticket_20160908
+
+LOAD DATA LOCAL INFILE 'D:\\Documents\\SQL\\aclog\\ticket_20160909.csv' # æ›´æ¢æ—¥æœŸ
+INTO TABLE ticket
 FIELDS TERMINATED BY ','
 ESCAPED BY ''
 LINES TERMINATED BY '\r\n'
 IGNORE 1 LINES;
-
-alter table ticket_20160908 add index idx_ip (ip);
-
-# tricketµÄipÊı 157303
-select count(1) from(select distinct ip from ticket_20160908)t;
+alter table ticket add index idx_ip (calling_ip);
+alter table ticket add index idx_mac (calling_mac);
 
 
+# tricketçš„ipæ•° 157303
+select count(1) from(select distinct ip from ticket)t;
 
-# ÏëÔÚ·şÎñÆ÷ÉÏÖ±½Ó½¨¸ö±í£¬µ«´ÅÅÌÒÑÂú
+
+
+# æƒ³åœ¨æœåŠ¡å™¨ä¸Šç›´æ¥å»ºä¸ªè¡¨ï¼Œä½†ç£ç›˜å·²æ»¡
 drop table if exists ip_table;
 create table ip_table
 (id int not null AUTO_INCREMENT
@@ -58,32 +84,65 @@ create table ip_table
 select host_ip,dst_ip into ip_table from 20160908_domain_flux;
 
 
-# ´Ó·şÎñÆ÷µ¼³öÊı¾İ
+# ä»æœåŠ¡å™¨å¯¼å‡ºæ•°æ®
 select host_ip from 20160908_domain_flux
 INTO OUTFILE '/var/ftp//School/20160908_domain_flux.csv'
 FIELDS TERMINATED BY ','
 ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
-# µ¼Èë±¾µØÊı¾İ¿â
+# å¯¼å…¥æœ¬åœ°æ•°æ®åº“
 drop table if exists ip_table;
 create table ip_table
 (host_ip varchar(50));
-LOAD DATA LOCAL INFILE 'C:\\Users\\Administrator\\Desktop\\20160908_domain_flux.csv'
+LOAD DATA LOCAL INFILE 'D:\\Documents\\SQL\\aclog\\20160908_domain_flux.csv'
 INTO TABLE ip_table
 FIELDS TERMINATED BY ','
 LINES TERMINATED BY '\r\n';
 
 alter table ip_table add index idx_ip (host_ip);
 
-# ½»¼¯Êı
+# äº¤é›†æ•° ipå­—æ®µåå·²æ”¹
 select count(1) from (
-select distinct ip from ticket_20160908 a where exists (
-select distinct host_ip from ip_table where host_ip=a.ip )
+select distinct calling_ip from ticket a where exists (
+select distinct host_ip from ip_table where host_ip=a.calling_ip )
 )t;
 
-# Ê¾Àı
-select * from ticket_20160908 a where exists (
-select * from ip_table where host_ip=a.ip ) 
+# ç¤ºä¾‹
+select * from ticket a where exists (
+select * from ip_table where host_ip=a.calling_ip ) 
 limit 10;
+
+# æ—¶é—´æµ‹è¯• å­—æ®µç±»å‹å·²æ”¹
+select msg_last_time,msg_first_time from user_terminal limit 10;
+select datediff(last,first) from (
+select str_to_date(msg_last_time,'%Y-%m-%d %H:%i:%s') as last
+,str_to_date(msg_first_time,'%Y-%m-%d %H:%i:%s') as first from user_terminal limit 10)t;
+
+
+
+# ä»user_terminalä¸­é€‰å‡ºè¿‘3ä¸ªæœˆè¿˜åœ¨ç”¨ä¸”ä½¿ç”¨æ—¶é—´è¶…1å¹´çš„ç”¨æˆ·
+select 'ip','msg_first_time','msg_last_time','use_days'
+union all
+select * from (
+select ip,first,last,datediff(last,first) as days from (
+select visit_ip_address as ip,msg_first_time as first,msg_last_time as last 
+from user_terminal where substring(msg_last_time,1,7)>='2016-07' )a
+) b where days>=365
+INTO OUTFILE 'D:\\Documents\\SQL\\aclog\\user_1year.csv'
+FIELDS TERMINATED BY ','
+ESCAPED BY ''
+LINES TERMINATED BY '\r\n';
+
+
+#--æµ‹è¯•user_terminalå’Œticketçš„macåœ°å€æ˜¯å¦åŒ¹é… 17ä¸ª
+select mac_address from (
+select mac_address from user_terminal ut where exists (
+select * from ticket where calling_mac=ut.mac_address)
+) a;
+
+select count(1) from (
+select distinct calling_mac from ticket  ut where calling_mac in (
+select mac_address from user_terminal)
+) a;
 

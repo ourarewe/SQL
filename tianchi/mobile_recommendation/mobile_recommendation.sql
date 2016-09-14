@@ -1,6 +1,6 @@
 #\. D:\\Documents\\SQL\\tianchi\\mobile_recommendation\\mobile_recommendation.sql
 
-# 交集->横表
+# 录入原始表 取交集 把交集变为横表
 
 drop table if exists tianchi_fresh_comp_train_user;
 create table tianchi_fresh_comp_train_user
@@ -134,6 +134,8 @@ drop table temp;
 
 # 加索引
 alter table tianchi_fresh_comp_train_P_R add index idx_time (time);
+alter table tianchi_fresh_comp_train_P_R add index idx_u_t (user_id,item_id);
+
 
 # 查看
 select * from tianchi_fresh_comp_train_P_R where time like '2014-12-12 %' limit 10;
