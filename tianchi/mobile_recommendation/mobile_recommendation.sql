@@ -20,7 +20,7 @@ LINES TERMINATED BY '\r\n'
 IGNORE 1 LINES;
 
 alter table tianchi_fresh_comp_train_user add index idx_item (item_id);
-
+alter table tianchi_fresh_comp_train_user add index idx_user (user_id);
 
 
 drop table if exists tianchi_fresh_comp_train_item;
@@ -102,7 +102,7 @@ create table tianchi_fresh_comp_train_P_R
 ,buy int
 )ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
-#--1 min 4.27 sec----------------------------------------------------------------
+#--1 min 4.27 sec-----time字段应该改为substring(time)----------------------------------------------
 # 要手动一天天insert into，好麻烦，中间出错就完蛋了！！！！下面有循环测试
 #--18 19 20 21 22 23 24 25 26 27 28 29 30 01 02 03 04 05 06 07 08 09 10 11 13 14 15 16 17 18---------------------
 insert into tianchi_fresh_comp_train_P_R
@@ -135,6 +135,7 @@ drop table temp;
 # 加索引
 alter table tianchi_fresh_comp_train_P_R add index idx_time (time);
 alter table tianchi_fresh_comp_train_P_R add index idx_u_t (user_id,item_id);
+alter table tianchi_fresh_comp_train_P_R add index idx_t (item_id);
 
 
 # 查看

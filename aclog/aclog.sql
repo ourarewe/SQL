@@ -1,8 +1,11 @@
 
 #--user_terminal-------------------------------------------------------------
+#,mobile_generation int default 0 
+#,current_apn varchar(1) default NULL
+#,current_using_wifi varchar(1) default NULL
 drop table if exists user_terminal;
 create table user_terminal
-(mac_address varchar(50) default NULL
+(mac_address varchar(50) default NULL #-------------------mac地址------------------
 ,imsi varchar(50) default NULL
 ,imei varchar(50) default NULL
 ,os varchar(50) default NULL
@@ -14,13 +17,12 @@ create table user_terminal
 ,mobile_operator varchar(50) default NULL
 ,mobile_standard varchar(50) default NULL
 ,mobile_network varchar(50) default NULL
-,mobile_generation int default 0
-,current_apn varchar(1) default NULL
-,current_using_wifi varchar(1) default NULL
-,visit_ip_address varchar(50) default NULL
+,visit_ip_address varchar(50) default NULL #--------------ip----------------------------
 ,msg_first_time Datetime default NULL
 ,msg_last_time Datetime default NULL
 ,msg_count int default 0
+,user_phone_number varchar(50) default '0' #----------------电话号码-----------------
+,domain_name varchar(50) default NULL
 )ENGINE=MyISAM DEFAULT CHARSET=utf8;
 LOAD DATA LOCAL INFILE 'D:\\Documents\\SQL\\aclog\\user_terminal.csv'
 INTO TABLE user_terminal
@@ -29,9 +31,9 @@ ESCAPED BY ''
 LINES TERMINATED BY '\r\n'
 IGNORE 1 LINES;
 
-alter table user_terminal add index idx_ip (visit_ip_address);
-alter table user_terminal add index idx_mac (mac_address);
-
+#alter table user_terminal add index idx_ip (visit_ip_address);
+#alter table user_terminal add index idx_mac (mac_address);
+create index idx_phone on user_terminal (user_phone_number);
 
 #--ticket 可更换不同日期的ticket表-----------------------------------------------------------------
 drop table if exists ticket;
@@ -64,9 +66,11 @@ FIELDS TERMINATED BY ','
 ESCAPED BY ''
 LINES TERMINATED BY '\r\n'
 IGNORE 1 LINES;
-alter table ticket add index idx_ip (calling_ip);
-alter table ticket add index idx_mac (calling_mac);
-
+#alter table ticket add index idx_ip (calling_ip);
+#alter table ticket add index idx_mac (calling_mac);
+alter table ticket add user_phone_number varchar(50) default '0' after user;
+update ticket set user_phone_number:=substring_index(user,'@',1); 
+create index idx_phone on ticket (user_phone_number);
 
 # tricket的ip数 157303
 select count(1) from(select distinct ip from ticket)t;
@@ -135,14 +139,53 @@ ESCAPED BY ''
 LINES TERMINATED BY '\r\n';
 
 
-#--测试user_terminal和ticket的mac地址是否匹配 17个
-select mac_address from (
-select mac_address from user_terminal ut where exists (
-select * from ticket where calling_mac=ut.mac_address)
+# 从user_terminal中选出近3个月还在用且使用时间超1年的用户 且非电信用户
+select 'user_phone_number','domain_name','os','os_version','term_model','term_model'
+,'mobile_operator','mobile_standard','mobile_network'
+,'msg_first_time','msg_last_time','msg_count','use_days'
+union all
+select user_phone_number,domain_name,os,os_version,term_model,term_model
+,mobile_operator,mobile_standard,mobile_network
+,msg_first_time,msg_last_time,msg_count,days from (
+select *,datediff(msg_last_time,msg_first_time) as days from (
+select * from (select * from user_terminal 
+where substring(msg_last_time,1,7)>='2016-07')a
+where mobile_operator!='中国电信' or mobile_standard!='CDMA' or mobile_operator is null or mobile_standard is null)c
+) b where days>=365 and user_phone_number>0
+INTO OUTFILE 'D:\\Documents\\SQL\\aclog\\user_not_CDMA_1year.csv'
+FIELDS TERMINATED BY ','
+ESCAPED BY ''
+LINES TERMINATED BY '\r\n';
+
+#--电信用户------------------------------
+select 'user_phone_number','domain_name','os','os_version','term_model','term_model'
+,'mobile_operator','mobile_standard','mobile_network'
+,'msg_first_time','msg_last_time','msg_count','use_days'
+union all
+select user_phone_number,domain_name,os,os_version,term_model,term_model
+,mobile_operator,mobile_standard,mobile_network
+,msg_first_time,msg_last_time,msg_count,days from (
+select *,datediff(msg_last_time,msg_first_time) as days from (
+select * from (select * from user_terminal 
+where substring(msg_last_time,1,7)>='2016-07')a
+where mobile_operator='中国电信' or mobile_standard='CDMA')c
+) b where days>=365 and user_phone_number>0
+INTO OUTFILE 'D:\\Documents\\SQL\\aclog\\user_is_CDMA_1year.csv'
+FIELDS TERMINATED BY ','
+ESCAPED BY ''
+LINES TERMINATED BY '\r\n';
+
+
+
+#--测试user_terminal和ticket的电话号码是否匹配 12069个
+select count(1) from (
+select user_phone_number from user_terminal ut where exists (
+select * from ticket where user_phone_number=ut.user_phone_number)
 ) a;
 
-select count(1) from (
-select distinct calling_mac from ticket  ut where calling_mac in (
-select mac_address from user_terminal)
-) a;
+select user_phone_number from (
+select user_phone_number from user_terminal ut where user_phone_number in (
+select user_phone_number from ticket );
+
+
 
